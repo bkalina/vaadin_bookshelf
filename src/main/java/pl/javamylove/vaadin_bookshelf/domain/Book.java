@@ -2,19 +2,32 @@ package pl.javamylove.vaadin_bookshelf.domain;
 
 import javax.validation.constraints.Size;
 
+import org.codehaus.jackson.annotate.JsonProperty;
+
 public class Book {
+	@JsonProperty("ID")
 	private String id;
 	@Size(min = 5, max = 200, message = "Minimum 5 znaków")
+	@JsonProperty("Title")
 	private String title;
+	@JsonProperty("SubTitle")
 	private String subTitle;
+	@JsonProperty("Description")
 	private String description;
+	@JsonProperty("Author")
 	@Size(min = 5, max = 100, message = "Minimum 5 znaków")
 	private String author;
+	@JsonProperty("ISBN")
 	private String isbn;
+	@JsonProperty("Year")
 	private String year;
+	@JsonProperty("Page")
 	private String page;
+	@JsonProperty("Publisher")
 	private String publisher;
+	@JsonProperty("Image")
 	private String image;
+	@JsonProperty("Download")
 	private String download;
 
 	public Book() {

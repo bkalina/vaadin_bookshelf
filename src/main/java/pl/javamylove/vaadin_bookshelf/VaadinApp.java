@@ -5,16 +5,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Set;
-
-import javax.validation.ConstraintViolation;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
+import java.util.List;
 
 import org.codehaus.jackson.JsonGenerationException;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.type.TypeReference;
 
 import pl.javamylove.vaadin_bookshelf.domain.Book;
 import pl.javamylove.vaadin_bookshelf.service.BookManager;
@@ -24,7 +22,6 @@ import com.vaadin.data.Property;
 import com.vaadin.data.Property.ReadOnlyException;
 import com.vaadin.data.Property.ValueChangeEvent;
 import com.vaadin.data.fieldgroup.BeanFieldGroup;
-import com.vaadin.data.fieldgroup.FieldGroup.CommitException;
 import com.vaadin.data.util.BeanItem;
 import com.vaadin.data.util.BeanItemContainer;
 import com.vaadin.server.Page;
@@ -47,14 +44,14 @@ public class VaadinApp extends UI {
 
 	private static final long serialVersionUID = 1L;
 
-	private static Validator validator;
 	private BookManager bookManager = new BookManager();
-
 	private Book book = new Book();
 	private BeanItem<Book> bookItem = new BeanItem<Book>(book);
 	private final String USER_AGENT = "Mozilla/5.0";
 
 	private BeanItemContainer<Book> books = new BeanItemContainer<Book>(
+			Book.class);
+	private BeanItemContainer<Book> itBooks = new BeanItemContainer<Book>(
 			Book.class);
 
 	enum Action {
@@ -62,11 +59,11 @@ public class VaadinApp extends UI {
 	}
 
 	// Dodawanie i edycja
-	private class MyFormWindow extends Window {
+	private class AddBookForm extends Window {
 		private static final long serialVersionUID = 1L;
 		private Action action;
 
-		public MyFormWindow(final Action actionType) {
+		public AddBookForm(final Action actionType) {
 			this.action = actionType;
 			setModal(true);
 			center();
@@ -75,22 +72,19 @@ public class VaadinApp extends UI {
 
 			switch (actionType) {
 			case ADD:
-				setCaption("Add book");
-				saveBtn = new Button(" Add book ");
+				setCaption("Dodaj książkę");
+				saveBtn = new Button(" Dodaj książkę ");
 				break;
 
 			case EDIT:
-				setCaption("Edit book");
-				saveBtn = new Button(" Edit book ");
+				setCaption("Edytuj pozycję");
+				saveBtn = new Button(" Zapisz ");
 				break;
 
 			default:
 				saveBtn = new Button();
 				break;
 			}
-			ValidatorFactory factory = Validation
-					.buildDefaultValidatorFactory();
-			validator = factory.getValidator();
 			final FormLayout form = new FormLayout();
 			final BeanFieldGroup<Book> binder = new BeanFieldGroup<Book>(
 					Book.class);
@@ -103,7 +97,6 @@ public class VaadinApp extends UI {
 			form.addComponent(binder.buildAndBind("Rok", "year"));
 			form.addComponent(binder.buildAndBind("Liczba stron", "page"));
 			form.addComponent(binder.buildAndBind("Wydawca", "publisher"));
-
 			binder.setBuffered(true);
 
 			VerticalLayout fvl = new VerticalLayout();
@@ -123,20 +116,14 @@ public class VaadinApp extends UI {
 
 				@Override
 				public void buttonClick(ClickEvent event) {
-					Book oldBook = new Book(book.getId(), book.getTitle(), book
-							.getSubTitle(), book.getDescription(), book
-							.getAuthor(), book.getIsbn(), book.getYear(), book
-							.getPage(), book.getPublisher(), book.getImage(),
-							book.getDownload());
-					Set<ConstraintViolation<Book>> constraintViolations = validator
-							.validate(book);
-					System.out.println("###" + constraintViolations.size());
-					if (constraintViolations.size() == 0) {
-						try {
-							binder.commit();
-						} catch (CommitException e) {
-							e.printStackTrace();
-						}
+					try {
+						Book oldBook = new Book(book.getId(), book.getTitle(),
+								book.getSubTitle(), book.getDescription(), book
+										.getAuthor(), book.getIsbn(), book
+										.getYear(), book.getPage(), book
+										.getPublisher(), book.getImage(), book
+										.getDownload());
+						binder.commit();
 						switch (action) {
 						case ADD:
 							bookManager.addBook(book);
@@ -150,7 +137,8 @@ public class VaadinApp extends UI {
 						books.removeAllItems();
 						books.addAll(bookManager.findAll());
 						close();
-					} else {
+					} catch (Exception e) {
+						@SuppressWarnings("deprecation")
 						Notification notif = new Notification("Błąd",
 								"Uzupełnij formularz!",
 								Notification.TYPE_ERROR_MESSAGE);
@@ -174,17 +162,189 @@ public class VaadinApp extends UI {
 		}
 	}
 
-	private String sendGet(String id) throws Exception {
+	// Dodawanie z IT-ebooks
+	private class AddBookFormExt extends Window {
+		private static final long serialVersionUID = 1L;
+
+		public AddBookFormExt() {
+			setModal(true);
+			center();
+			setCaption("Dodaj książkę z IT-ebooks");
+			final Button saveBtn = new Button(" Dodaj książkę ");
+			final Button cancelBtn = new Button(" Anuluj ");
+			final Button searchlBtn = new Button(" Szukaj ");
+			final TextField searchQuery = new TextField();
+
+			final FormLayout form = new FormLayout();
+			final BeanFieldGroup<Book> binder = new BeanFieldGroup<Book>(
+					Book.class);
+			binder.setItemDataSource(bookItem);
+			form.addComponent(binder.buildAndBind("Tytuł", "title"));
+			form.addComponent(binder.buildAndBind("Podtytuł", "subTitle"));
+			form.addComponent(binder.buildAndBind("Opis", "description"));
+			form.addComponent(binder.buildAndBind("Autor", "author"));
+			form.addComponent(binder.buildAndBind("ISBN", "isbn"));
+			form.addComponent(binder.buildAndBind("Rok", "year"));
+			form.addComponent(binder.buildAndBind("Liczba stron", "page"));
+			form.addComponent(binder.buildAndBind("Wydawca", "publisher"));
+			binder.setBuffered(true);
+
+			final Table itBookTable = new Table("", itBooks);
+			itBookTable.setColumnHeader("title", "Tytuł");
+			itBookTable.setColumnHeader("subtitle", "Podtytuł");
+			itBookTable.setColumnHeader("description", "Opis");
+			itBookTable.setColumnHeader("author", "Autor");
+			itBookTable.setColumnHeader("isbn", "ISBN");
+			itBookTable.setColumnHeader("year", "Rok wydania");
+			itBookTable.setColumnHeader("page", "Liczba stron");
+			itBookTable.setColumnHeader("publisher", "Wydawca");
+			itBookTable.setColumnHeader("download", "Link");
+			itBookTable.setColumnHeader("image", "Okładka");
+			itBookTable.setColumnHeader("id", "ID");
+			itBookTable.setSelectable(true);
+			itBookTable.setImmediate(true);
+
+			itBookTable
+					.addValueChangeListener(new Property.ValueChangeListener() {
+						private static final long serialVersionUID = 1L;
+
+						@Override
+						public void valueChange(ValueChangeEvent event) {
+
+							Book selectedBook = (Book) itBookTable.getValue();
+							if (selectedBook == null) {
+								book.setId("");
+								book.setTitle("");
+								book.setSubTitle("");
+								book.setDescription("");
+								book.setAuthor("");
+							} else {
+								try {
+									book = getBookById(selectedBook.getId());
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
+							}
+						}
+					});
+
+			VerticalLayout fvl = new VerticalLayout();
+			fvl.setMargin(true);
+			fvl.addComponent(form);
+
+			HorizontalLayout hl = new HorizontalLayout();
+			hl.addComponent(saveBtn);
+			hl.addComponent(cancelBtn);
+			fvl.addComponent(hl);
+
+			HorizontalLayout hlMain = new HorizontalLayout();
+			hlMain.addComponent(fvl);
+			VerticalLayout fvl2 = new VerticalLayout();
+			hlMain.addComponent(fvl2);
+			HorizontalLayout hl2 = new HorizontalLayout();
+			fvl2.addComponent(hl2);
+			hl2.addComponent(searchQuery);
+			hl2.addComponent(searchlBtn);
+			fvl2.addComponent(itBookTable);
+			setContent(hlMain);
+
+			saveBtn.addClickListener(new ClickListener() {
+				private static final long serialVersionUID = 1L;
+
+				@Override
+				public void buttonClick(ClickEvent event) {
+					try {
+						binder.commit();
+						bookManager.addBook(book);
+						books.removeAllItems();
+						books.addAll(bookManager.findAll());
+						close();
+					} catch (Exception e) {
+						@SuppressWarnings("deprecation")
+						Notification notif = new Notification("Błąd",
+								"Uzupełnij formularz!",
+								Notification.TYPE_ERROR_MESSAGE);
+						notif.setDelayMsec(5000);
+						notif.setPosition(Position.BOTTOM_CENTER);
+						notif.show(Page.getCurrent());
+					}
+				}
+			});
+
+			cancelBtn.addClickListener(new ClickListener() {
+				private static final long serialVersionUID = 1L;
+
+				@Override
+				public void buttonClick(ClickEvent event) {
+					binder.discard();
+					close();
+				}
+			});
+
+			searchlBtn.addClickListener(new ClickListener() {
+				private static final long serialVersionUID = 1L;
+
+				@Override
+				public void buttonClick(ClickEvent event) {
+					try {
+						itBooks.addAll(searchBook(searchQuery.getValue()));
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			});
+		}
+	}
+
+	private Book getBookById(String id) throws Exception {
 
 		String url = "http://it-ebooks-api.info/v1/book/" + id;
 
 		URL obj = new URL(url);
 		HttpURLConnection con = (HttpURLConnection) obj.openConnection();
-
-		// optional default is GET
 		con.setRequestMethod("GET");
+		con.setRequestProperty("User-Agent", USER_AGENT);
 
-		// add request header
+		int responseCode = con.getResponseCode();
+		System.out.println("\nSending 'GET' request to URL : " + url);
+		System.out.println("Response Code : " + responseCode);
+
+		BufferedReader in = new BufferedReader(new InputStreamReader(
+				con.getInputStream()));
+		String inputLine;
+		StringBuffer response = new StringBuffer();
+
+		while ((inputLine = in.readLine()) != null) {
+			response.append(inputLine);
+		}
+		in.close();
+
+		System.out.println("RESPONSE: " + response.toString());
+		ObjectMapper mapper = new ObjectMapper();
+		mapper.configure(
+				DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+		mapper.configure(DeserializationConfig.Feature.USE_ANNOTATIONS, true);
+		try {
+			Book book = mapper.readValue(response.toString(), Book.class);
+			System.out.println("OUTPUT: " + book);
+		} catch (JsonGenerationException e) {
+			e.printStackTrace();
+		} catch (JsonMappingException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return book;
+
+	}
+
+	private List<Book> searchBook(String query) throws Exception {
+
+		String url = "http://it-ebooks-api.info/v1/search/" + query;
+
+		URL obj = new URL(url);
+		HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+		con.setRequestMethod("GET");
 		con.setRequestProperty("User-Agent", USER_AGENT);
 
 		int responseCode = con.getResponseCode();
@@ -202,56 +362,50 @@ public class VaadinApp extends UI {
 		in.close();
 
 		// print result
-		System.out.println(response.toString());
-		// jsonToJava(response.toString());
-		return response.toString();
+		System.out.println("RESPONSE: " + response.toString());
 
-	}
-
-	public void jsonToJava(String input) {
 		ObjectMapper mapper = new ObjectMapper();
-
+		mapper.configure(
+				DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+		mapper.configure(DeserializationConfig.Feature.USE_ANNOTATIONS, true);
+		List<Book> jsonBooks = null;
 		try {
-
-			// read from file, convert it to user class
-			Book book = mapper.readValue(input, Book.class);
-
-			// display to console
-			System.out.println(book);
-
+			JsonNode root = mapper.readTree(response.toString());
+			JsonNode books = root.get("Books");
+			jsonBooks = mapper.readValue(books,
+					new TypeReference<List<Book>>() {
+					});
 		} catch (JsonGenerationException e) {
-
 			e.printStackTrace();
-
 		} catch (JsonMappingException e) {
-
 			e.printStackTrace();
-
 		} catch (IOException e) {
-
 			e.printStackTrace();
-
 		}
+		System.out.println("OUTPUT");
+		for (Book b : jsonBooks) {
+			System.out.println(b);
+		}
+		return jsonBooks;
+
 	}
 
 	@Override
 	protected void init(VaadinRequest request) {
 
-		Button addBookFormBtn = new Button("Add ");
-		Button deleteBookFormBtn = new Button("Delete");
-		Button editBookFormBtn = new Button("Edit");
-		TextField tf = new TextField();
+		Button addBookFormBtn = new Button("Dodaj");
+		Button addBookFormExtBtn = new Button("Dodaj z IT-ebooks");
+		Button editBookFormBtn = new Button("Edytuj");
+		Button deleteBookFormBtn = new Button("Usuń");
 
 		VerticalLayout vl = new VerticalLayout();
-		tf.setWidth("300px");
 		try {
-			tf.setValue(sendGet("2279690981"));
+			getBookById("2279690981");
 		} catch (ReadOnlyException e) {
 			e.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		vl.addComponent(tf);
 		setContent(vl);
 
 		addBookFormBtn.addClickListener(new ClickListener() {
@@ -268,7 +422,25 @@ public class VaadinApp extends UI {
 				book.setYear("");
 				book.setPage("");
 				book.setPublisher("");
-				addWindow(new MyFormWindow(Action.ADD));
+				addWindow(new AddBookForm(Action.ADD));
+			}
+		});
+
+		addBookFormExtBtn.addClickListener(new ClickListener() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void buttonClick(ClickEvent event) {
+				book.setTitle("");
+				book.setSubTitle("");
+				book.setDescription("");
+				book.setAuthor("");
+				book.setIsbn("");
+				book.setYear("");
+				book.setPage("");
+				book.setPublisher("");
+				addWindow(new AddBookFormExt());
 			}
 		});
 
@@ -278,7 +450,7 @@ public class VaadinApp extends UI {
 
 			@Override
 			public void buttonClick(ClickEvent event) {
-				addWindow(new MyFormWindow(Action.EDIT));
+				addWindow(new AddBookForm(Action.EDIT));
 			}
 		});
 
@@ -298,10 +470,11 @@ public class VaadinApp extends UI {
 
 		HorizontalLayout hl = new HorizontalLayout();
 		hl.addComponent(addBookFormBtn);
+		hl.addComponent(addBookFormExtBtn);
 		hl.addComponent(editBookFormBtn);
 		hl.addComponent(deleteBookFormBtn);
 
-		final Table bookTable = new Table("Books", books);
+		final Table bookTable = new Table("", books);
 		bookTable.setColumnHeader("title", "Tytuł");
 		bookTable.setColumnHeader("subtitle", "Podtytuł");
 		bookTable.setColumnHeader("description", "Opis");
