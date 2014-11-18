@@ -45,7 +45,7 @@ public class BookManager {
 				break;
 			}
 		}
-		System.out.println("Delete: " + db.remove(toRemove));
+		db.remove(toRemove);
 	}
 
 	public List<Book> findAll() {

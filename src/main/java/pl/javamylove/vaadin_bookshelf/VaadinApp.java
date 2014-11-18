@@ -25,6 +25,7 @@ import com.vaadin.data.fieldgroup.BeanFieldGroup;
 import com.vaadin.data.util.BeanItem;
 import com.vaadin.data.util.BeanItemContainer;
 import com.vaadin.server.Page;
+import com.vaadin.server.ThemeResource;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.shared.Position;
 import com.vaadin.ui.Button;
@@ -170,6 +171,7 @@ public class VaadinApp extends UI {
 			setModal(true);
 			center();
 			setCaption("Dodaj książkę z IT-ebooks");
+			setWidth(80.0f, Unit.PERCENTAGE);
 			final Button saveBtn = new Button(" Dodaj książkę ");
 			final Button cancelBtn = new Button(" Anuluj ");
 			final Button searchlBtn = new Button(" Szukaj ");
@@ -191,7 +193,7 @@ public class VaadinApp extends UI {
 
 			final Table itBookTable = new Table("", itBooks);
 			itBookTable.setColumnHeader("title", "Tytuł");
-			itBookTable.setColumnHeader("subtitle", "Podtytuł");
+			itBookTable.setColumnHeader("subTitle", "Podtytuł");
 			itBookTable.setColumnHeader("description", "Opis");
 			itBookTable.setColumnHeader("author", "Autor");
 			itBookTable.setColumnHeader("isbn", "ISBN");
@@ -203,6 +205,8 @@ public class VaadinApp extends UI {
 			itBookTable.setColumnHeader("id", "ID");
 			itBookTable.setSelectable(true);
 			itBookTable.setImmediate(true);
+			itBookTable.setVisibleColumns(new Object[] { "title", "subTitle",
+					"isbn" });
 
 			itBookTable
 					.addValueChangeListener(new Property.ValueChangeListener() {
@@ -220,7 +224,20 @@ public class VaadinApp extends UI {
 								book.setAuthor("");
 							} else {
 								try {
-									book = getBookById(selectedBook.getId());
+//									book = getBookById(selectedBook.getId());
+									System.out.println(book.toString());
+									Book temp = getBookById(selectedBook.getId());
+									book.setTitle(temp.getTitle());
+									book.setSubTitle(temp.getSubTitle());
+									book.setDescription(temp.getDescription());
+									book.setAuthor(temp.getAuthor());
+									book.setIsbn(temp.getIsbn());
+									book.setYear(temp.getYear());
+									book.setPage(temp.getPage());
+									book.setPublisher(temp.getPublisher());
+									System.out.println(book.toString());
+									close();
+									addWindow(new AddBookFormExt());
 								} catch (Exception e) {
 									e.printStackTrace();
 								}
@@ -319,14 +336,20 @@ public class VaadinApp extends UI {
 		}
 		in.close();
 
+		return jsonToBook(response.toString());
+
+	}
+
+	private Book jsonToBook(String response) {
 		System.out.println("RESPONSE: " + response.toString());
+		Book jsonBook = null;
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.configure(
 				DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 		mapper.configure(DeserializationConfig.Feature.USE_ANNOTATIONS, true);
 		try {
-			Book book = mapper.readValue(response.toString(), Book.class);
-			System.out.println("OUTPUT: " + book);
+			jsonBook = mapper.readValue(response.toString(), Book.class);
+			System.out.println("OUTPUT: " + jsonBook);
 		} catch (JsonGenerationException e) {
 			e.printStackTrace();
 		} catch (JsonMappingException e) {
@@ -334,8 +357,7 @@ public class VaadinApp extends UI {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return book;
-
+		return jsonBook;
 	}
 
 	private List<Book> searchBook(String query) throws Exception {
@@ -361,7 +383,20 @@ public class VaadinApp extends UI {
 		}
 		in.close();
 
-		// print result
+		if (response.toString().length() < 26) {
+			@SuppressWarnings("deprecation")
+			Notification notif = new Notification("Informacja",
+					"Brak wyników!", Notification.TYPE_HUMANIZED_MESSAGE);
+			notif.setDelayMsec(5000);
+			notif.setPosition(Position.BOTTOM_CENTER);
+			notif.show(Page.getCurrent());
+			return null;
+		} else {
+			return jsonToBookList(response.toString());
+		}
+	}
+
+	private List<Book> jsonToBookList(String response) {
 		System.out.println("RESPONSE: " + response.toString());
 
 		ObjectMapper mapper = new ObjectMapper();
@@ -387,7 +422,6 @@ public class VaadinApp extends UI {
 			System.out.println(b);
 		}
 		return jsonBooks;
-
 	}
 
 	@Override
@@ -475,8 +509,9 @@ public class VaadinApp extends UI {
 		hl.addComponent(deleteBookFormBtn);
 
 		final Table bookTable = new Table("", books);
+		bookTable.setWidth(80.0f, Unit.PERCENTAGE);
 		bookTable.setColumnHeader("title", "Tytuł");
-		bookTable.setColumnHeader("subtitle", "Podtytuł");
+		bookTable.setColumnHeader("subTitle", "Podtytuł");
 		bookTable.setColumnHeader("description", "Opis");
 		bookTable.setColumnHeader("author", "Autor");
 		bookTable.setColumnHeader("isbn", "ISBN");
@@ -488,6 +523,8 @@ public class VaadinApp extends UI {
 		bookTable.setColumnHeader("id", "ID");
 		bookTable.setSelectable(true);
 		bookTable.setImmediate(true);
+		bookTable.setVisibleColumns(new Object[] { "title", "subTitle",
+				 "author", "description", "isbn", "publisher", "year", "page" });
 
 		bookTable.addValueChangeListener(new Property.ValueChangeListener() {
 
@@ -503,12 +540,20 @@ public class VaadinApp extends UI {
 					book.setSubTitle("");
 					book.setDescription("");
 					book.setAuthor("");
+					book.setIsbn("");
+					book.setYear("");
+					book.setPage("");
+					book.setPublisher("");
 				} else {
 					book.setId(selectedBook.getId());
 					book.setTitle(selectedBook.getTitle());
 					book.setSubTitle(selectedBook.getSubTitle());
 					book.setDescription(selectedBook.getDescription());
 					book.setAuthor(selectedBook.getAuthor());
+					book.setIsbn(selectedBook.getIsbn());
+					book.setYear(selectedBook.getYear());
+					book.setPage(selectedBook.getPage());
+					book.setPublisher(selectedBook.getPublisher());
 				}
 			}
 		});
