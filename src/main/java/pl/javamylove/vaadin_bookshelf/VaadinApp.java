@@ -19,13 +19,11 @@ import pl.javamylove.vaadin_bookshelf.service.BookManager;
 
 import com.vaadin.annotations.Title;
 import com.vaadin.data.Property;
-import com.vaadin.data.Property.ReadOnlyException;
 import com.vaadin.data.Property.ValueChangeEvent;
 import com.vaadin.data.fieldgroup.BeanFieldGroup;
 import com.vaadin.data.util.BeanItem;
 import com.vaadin.data.util.BeanItemContainer;
 import com.vaadin.server.Page;
-import com.vaadin.server.ThemeResource;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.shared.Position;
 import com.vaadin.ui.Button;
@@ -224,9 +222,8 @@ public class VaadinApp extends UI {
 								book.setAuthor("");
 							} else {
 								try {
-//									book = getBookById(selectedBook.getId());
-									System.out.println(book.toString());
-									Book temp = getBookById(selectedBook.getId());
+									Book temp = getBookById(selectedBook
+											.getId());
 									book.setTitle(temp.getTitle());
 									book.setSubTitle(temp.getSubTitle());
 									book.setDescription(temp.getDescription());
@@ -235,7 +232,6 @@ public class VaadinApp extends UI {
 									book.setYear(temp.getYear());
 									book.setPage(temp.getPage());
 									book.setPublisher(temp.getPublisher());
-									System.out.println(book.toString());
 									close();
 									addWindow(new AddBookFormExt());
 								} catch (Exception e) {
@@ -322,10 +318,6 @@ public class VaadinApp extends UI {
 		con.setRequestMethod("GET");
 		con.setRequestProperty("User-Agent", USER_AGENT);
 
-		int responseCode = con.getResponseCode();
-		System.out.println("\nSending 'GET' request to URL : " + url);
-		System.out.println("Response Code : " + responseCode);
-
 		BufferedReader in = new BufferedReader(new InputStreamReader(
 				con.getInputStream()));
 		String inputLine;
@@ -337,11 +329,9 @@ public class VaadinApp extends UI {
 		in.close();
 
 		return jsonToBook(response.toString());
-
 	}
 
 	private Book jsonToBook(String response) {
-		System.out.println("RESPONSE: " + response.toString());
 		Book jsonBook = null;
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.configure(
@@ -349,7 +339,6 @@ public class VaadinApp extends UI {
 		mapper.configure(DeserializationConfig.Feature.USE_ANNOTATIONS, true);
 		try {
 			jsonBook = mapper.readValue(response.toString(), Book.class);
-			System.out.println("OUTPUT: " + jsonBook);
 		} catch (JsonGenerationException e) {
 			e.printStackTrace();
 		} catch (JsonMappingException e) {
@@ -368,10 +357,6 @@ public class VaadinApp extends UI {
 		HttpURLConnection con = (HttpURLConnection) obj.openConnection();
 		con.setRequestMethod("GET");
 		con.setRequestProperty("User-Agent", USER_AGENT);
-
-		int responseCode = con.getResponseCode();
-		System.out.println("\nSending 'GET' request to URL : " + url);
-		System.out.println("Response Code : " + responseCode);
 
 		BufferedReader in = new BufferedReader(new InputStreamReader(
 				con.getInputStream()));
@@ -397,8 +382,6 @@ public class VaadinApp extends UI {
 	}
 
 	private List<Book> jsonToBookList(String response) {
-		System.out.println("RESPONSE: " + response.toString());
-
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.configure(
 				DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -417,10 +400,6 @@ public class VaadinApp extends UI {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		System.out.println("OUTPUT");
-		for (Book b : jsonBooks) {
-			System.out.println(b);
-		}
 		return jsonBooks;
 	}
 
@@ -433,13 +412,6 @@ public class VaadinApp extends UI {
 		Button deleteBookFormBtn = new Button("Usuń");
 
 		VerticalLayout vl = new VerticalLayout();
-		try {
-			getBookById("2279690981");
-		} catch (ReadOnlyException e) {
-			e.printStackTrace();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 		setContent(vl);
 
 		addBookFormBtn.addClickListener(new ClickListener() {
@@ -524,8 +496,7 @@ public class VaadinApp extends UI {
 		bookTable.setSelectable(true);
 		bookTable.setImmediate(true);
 		bookTable.setVisibleColumns(new Object[] { "title", "subTitle",
-				 "author", "description", "isbn", "publisher", "year", "page" });
-
+				"author", "description", "isbn", "publisher", "year", "page" });
 		bookTable.addValueChangeListener(new Property.ValueChangeListener() {
 
 			private static final long serialVersionUID = 1L;
